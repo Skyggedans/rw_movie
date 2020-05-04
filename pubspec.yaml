@@ -1,7 +1,6 @@
 name: rw_movie
 description: Movie plugin for RealWear HMT-1, wraps RealWear movie applet.
 version: 1.0.0
-author: Andrei Klaptsov <skyggedanser@gmail.com>
 homepage: https://github.com/Skyggedans/rw_movie
 
 environment:
