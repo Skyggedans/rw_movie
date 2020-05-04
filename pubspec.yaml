@@ -1,0 +1,21 @@
+name: rw_movie
+description: Movie plugin for RealWear HMT-1, wraps RealWear movie applet.
+version: 1.0.0
+author: Andrei Klaptsov <skyggedanser@gmail.com>
+homepage: https://github.com/Skyggedans/rw_movie
+
+environment:
+  sdk: ">=2.1.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    androidPackage: com.rockwellits.rw_plugins.rw_movie
+    pluginClass: RwMoviePlugin
