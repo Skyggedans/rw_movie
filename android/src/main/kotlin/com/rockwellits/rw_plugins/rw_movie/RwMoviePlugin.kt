@@ -1,10 +1,15 @@
 package com.rockwellits.rw_plugins.rw_movie
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.util.SparseArray
 import androidx.annotation.NonNull
 import androidx.core.content.FileProvider
+import at.huber.youtubeExtractor.VideoMeta
+import at.huber.youtubeExtractor.YouTubeExtractor
+import at.huber.youtubeExtractor.YtFile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -19,7 +24,7 @@ class RwMoviePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     lateinit var activity: Activity
 
     companion object {
-        val CHANNEL = "com.rockwellits.rw_plugins/rw_movie"
+        const val CHANNEL = "com.rockwellits.rw_plugins/rw_movie"
 
         @JvmStatic
         fun registerWith(registrar: Registrar) {
@@ -43,14 +48,30 @@ class RwMoviePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 call.argument<String>("fileName")?.let { playFile(it) }
                 result.success(null)
             } catch (e: Error) {
-                result.error(RwMoviePlugin::class.java.canonicalName, "Unable to play file", e.localizedMessage)
+                result.error(RwMoviePlugin::class.java.canonicalName,
+                        "Unable to play file", e.localizedMessage)
             }
             "playUrl" ->
                 try {
                     call.argument<String>("url")?.let { playUrl(it) }
                     result.success(null)
                 } catch (e: Error) {
-                    result.error(RwMoviePlugin::class.java.canonicalName, "Unable to play URL", e.localizedMessage)
+                    result.error(RwMoviePlugin::class.java.canonicalName,
+                            "Unable to play URL", e.localizedMessage)
+                }
+            "playYoutube" ->
+                try {
+                    call.argument<String>("url")?.let { playYoutube(it, result) }
+                } catch (e: Error) {
+                    result.error(RwMoviePlugin::class.java.canonicalName,
+                            "Unable to play Youtube URL", e.localizedMessage)
+                }
+            "getYoutubeStreams" ->
+                try {
+                    call.argument<String>("url")?.let { getYoutubeStreams(it, result) }
+                } catch (e: Error) {
+                    result.error(RwMoviePlugin::class.java.canonicalName,
+                            "Unable to get Youtube streams", e.localizedMessage)
                 }
             else ->
                 result.notImplemented()
@@ -73,17 +94,74 @@ class RwMoviePlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
     }
 
-    fun playFile(fileName: String) {
+    private fun playFile(fileName: String) {
         val contentUri = FileProvider.getUriForFile(this.activity.applicationContext,
                 this.activity.applicationContext.packageName + ".fileprovider", File(fileName))
 
         playUri(contentUri)
     }
 
-    fun playUrl(url: String) {
+    private fun playUrl(url: String) {
         val contentUri = Uri.parse(url)
 
         playUri(contentUri)
+    }
+
+    private fun playYoutube(url: String, result: Result) {
+        object : YouTubeExtractor(activity) {
+            override fun onExtractionComplete(ytFiles: SparseArray<YtFile>?, vMeta: VideoMeta?) {
+                if (ytFiles != null) {
+                    var maxHeight = 0
+                    var url = ""
+
+                    for (i in 0..ytFiles.size() - 1) {
+                        val ytFile = ytFiles.valueAt(i)
+
+                        if (ytFile.format.ext == "mp4" && ytFile.format.height > maxHeight) {
+                            maxHeight = ytFile.format.height
+                            url = ytFile.url
+                        }
+                    }
+
+                    if (url.isNotEmpty()) {
+                        val contentUri = Uri.parse(url)
+
+                        playUri(contentUri)
+                    }
+
+                    result.success(null)
+                } else {
+                    result.error(RwMoviePlugin::class.java.canonicalName,
+                            "Unable to extract Youtube streams", null)
+                }
+            }
+        }.extract(url, true, true)
+    }
+
+    private fun getYoutubeStreams(url: String, result: Result) {
+        object : YouTubeExtractor(activity) {
+            override fun onExtractionComplete(ytFiles: SparseArray<YtFile>?, vMeta: VideoMeta?) {
+                if (ytFiles != null) {
+                    val list = ArrayList<Map<String, Any>>()
+
+                    for (i in 0 until ytFiles.size()) {
+                        val key = ytFiles.keyAt(i)
+                        val file = ytFiles.get(key)
+
+                        list.add(hashMapOf(
+                                "url" to file.url,
+                                "ext" to file.format.ext,
+                                "height" to file.format.height
+                        ))
+                    }
+
+                    result.success(list)
+                } else {
+                    result.error(RwMoviePlugin::class.java.canonicalName,
+                            "Unable to extract Youtube streams", null)
+                }
+            }
+        }.extract(url, true, true)
     }
 
     fun playUri(contentUri: Uri) {

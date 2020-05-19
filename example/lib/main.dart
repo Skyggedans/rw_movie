@@ -46,6 +46,14 @@ class _MyAppState extends State<MyApp> {
                       'https://github.com/realwear/Developer-Examples/raw/integration/hmt1developerexamples/src/main/assets/kick%20ass.mp4');
                 },
               ),
+              RaisedButton(
+                child: Text('Play Youtube'),
+                onPressed: () async {
+                  final files =
+                      await RwMovie.playYoutube('https://youtu.be/ukARfq1sK6s');
+                  print(files);
+                },
+              ),
             ],
           ),
         ),
